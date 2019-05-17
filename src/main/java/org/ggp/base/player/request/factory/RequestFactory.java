@@ -109,6 +109,7 @@ public final class RequestFactory
 
 	private PlayRequest createPlay(Gamer gamer, SymbolList list) throws GdlFormatException
 	{
+		System.out.println(list.toString());
 		if (list.size() != 3)
 		{
 			throw new IllegalArgumentException("Expected exactly 2 arguments!");
@@ -146,6 +147,7 @@ public final class RequestFactory
 
 	private StartRequest createStart(Gamer gamer, SymbolList list) throws GdlFormatException
 	{
+		System.out.println(list.toString());
 		if (list.size() < 6)
 		{
 			throw new IllegalArgumentException("Expected at least 5 arguments!");

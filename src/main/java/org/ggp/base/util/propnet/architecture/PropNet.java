@@ -247,7 +247,7 @@ public final class PropNet implements Serializable
 	}
 
 	/**
-	 * Returns a representation of the PropNet in .dot format.
+	 * Returns a readable representation.
 	 *
 	 * @see java.lang.Object#toString()
 	 */
@@ -267,6 +267,24 @@ public final class PropNet implements Serializable
 	}
 
 	/**
+	 * Returns a representation of the PropNet in .dot format.
+	 *
+	 */
+	protected String toDot()
+	{
+		StringBuilder sb = new StringBuilder();
+
+		sb.append("digraph propNet\n{\n");
+		for ( Component component : components )
+		{
+			sb.append("\t" + component.toDot() + "\n");
+		}
+		sb.append("}");
+
+		return sb.toString();
+	}
+
+	/**
      * Outputs the propnet in .dot format to a particular file.
      * This can be viewed with tools like Graphviz and ZGRViewer.
      *
@@ -277,7 +295,7 @@ public final class PropNet implements Serializable
             File f = new File(filename);
             FileOutputStream fos = new FileOutputStream(f);
             OutputStreamWriter fout = new OutputStreamWriter(fos, "UTF-8");
-            fout.write(toString());
+            fout.write(toDot());
             fout.close();
             fos.close();
         } catch(Exception e) {

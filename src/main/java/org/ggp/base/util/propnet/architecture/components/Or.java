@@ -32,6 +32,15 @@ public final class Or extends Component
 	@Override
 	public String toString()
 	{
+		return "OR";
+	}
+
+	/**
+	 * @see org.ggp.base.util.propnet.architecture.Component#toDot()
+	 */
+	@Override
+	public String toDot()
+	{
 		return toDot("ellipse", "grey", "OR");
 	}
 

@@ -25,6 +25,15 @@ public final class Not extends Component
 	@Override
 	public String toString()
 	{
+		return "NOT";
+	}
+
+	/**
+	 * @see org.ggp.base.util.propnet.architecture.Component#toDot()
+	 */
+	@Override
+	public String toDot()
+	{
 		return toDot("invtriangle", "grey", "NOT");
 	}
 

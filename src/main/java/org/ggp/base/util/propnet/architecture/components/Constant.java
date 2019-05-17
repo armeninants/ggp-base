@@ -39,6 +39,15 @@ public final class Constant extends Component
 	@Override
 	public String toString()
 	{
+		return Boolean.toString(value).toUpperCase();
+	}
+
+	/**
+	 * @see org.ggp.base.util.propnet.architecture.Component#toDot()
+	 */
+	@Override
+	public String toDot()
+	{
 		return toDot("doublecircle", "grey", Boolean.toString(value).toUpperCase());
 	}
 

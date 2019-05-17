@@ -124,8 +124,9 @@ public abstract class Component implements Serializable
     /**
      * Returns a representation of the Component in .dot format.
      *
-     * @see java.lang.Object#toString()
      */
+    public abstract String toDot();
+
     @Override
     public abstract String toString();
 

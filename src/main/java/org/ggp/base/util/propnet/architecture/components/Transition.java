@@ -25,6 +25,15 @@ public final class Transition extends Component
 	@Override
 	public String toString()
 	{
+		return "TRANSITION";
+	}
+
+	/**
+	 * @see org.ggp.base.util.propnet.architecture.Component#toDot()
+	 */
+	@Override
+	public String toDot()
+	{
 		return toDot("box", "grey", "TRANSITION");
 	}
 

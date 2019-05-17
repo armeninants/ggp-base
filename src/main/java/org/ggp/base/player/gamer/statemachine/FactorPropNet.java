@@ -96,9 +96,9 @@ public class FactorPropNet {
 			}
 		}
 		System.out.println("Number of disjoint sets: " + disjointSets.size());
-		for (Set<Component> s : disjointSets) {
+		/*for (Set<Component> s : disjointSets) {
 			System.out.println(s.size());
-		}
+		}*/
 
 		//gather the noops
 		Set<Component> noops = new HashSet<Component>();
@@ -302,7 +302,7 @@ public class FactorPropNet {
 
 
 
-		//prop2.renderToFile("factoredprop.dot");
+		prop2.renderToFile("factoredprop.dot");
 
 		System.out.println("Original roles: " + prop.getRoles().size());
 		System.out.println("Original components: " + prop.getComponents().size());
@@ -353,7 +353,7 @@ public class FactorPropNet {
 		return factoredProps;
 	}
 
-	private static void inputDFS(Component c, int dist, Map<Component, Integer> goalDependency, Set<Component> seen, PropNet prop, String path) {
+	private void inputDFS(Component c, int dist, Map<Component, Integer> goalDependency, Set<Component> seen, PropNet prop, String path) {
 		if (seen.contains(c)) {
 			return;
 		}
@@ -363,6 +363,7 @@ public class FactorPropNet {
 			boolean isInput = prop.getInputPropositions().values().contains(p);
 			if (isInput) {
 				goalDependency.put(p, dist);
+				//System.out.println(path);
 			}
 		}
 		for (Component in : c.getInputs()) {

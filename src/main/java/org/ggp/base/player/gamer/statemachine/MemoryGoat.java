@@ -34,6 +34,8 @@ import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
+import com.google.common.collect.Lists;
+
 public class MemoryGoat extends XStateMachineGamer {
 	public static final boolean SAVE_MATCH = false;
 	public static final boolean FACTOR = true;
@@ -69,6 +71,7 @@ public class MemoryGoat extends XStateMachineGamer {
 	private Random rand = new Random();
 
 	protected List<XNodeLight> matchPath;
+	protected Map<String, Double> heuristicWeights;
 
 
 	public class Struct {
@@ -87,7 +90,7 @@ public class MemoryGoat extends XStateMachineGamer {
 	public XStateMachine getInitialStateMachine() {
 		XStateMachine machine = loadStateMachine();
 		if (machine == null) {
-			return new XStateMachine(FACTOR, new Role(getRoleName()));
+			machine = new XStateMachine(FACTOR, new Role(getRoleName()));
 		}
 		return machine;
 	}
@@ -121,9 +124,11 @@ public class MemoryGoat extends XStateMachineGamer {
 		last_depthCharges = 0;
 
 		//gather tree shape stats
-		int breadth = 0;
-		int nodes_searched = 1;
-		int depth = 0;
+		List<Double> breadth = new ArrayList<Double>();
+		List<Double> nodes_searched = new ArrayList<Double>();
+		breadth.add(0.);
+		nodes_searched.add(1.);
+		double depth = 0.;
 		Stack<XNodeLight> q = new Stack<XNodeLight>();
 		Stack<Integer> q_d = new Stack<Integer>();
 		q.push(roots[num_roots]);
@@ -133,12 +138,24 @@ public class MemoryGoat extends XStateMachineGamer {
 		while (!q.isEmpty() && System.currentTimeMillis() < finishBy+400) {
 			XNodeLight n = q.pop();
 			Integer d = q_d.pop();
-			++nodes_searched;
+			if (nodes_searched.size() < d) {
+				nodes_searched.add(1.);
+			}
+			double cur_ns = nodes_searched.get(d-1);
+			nodes_searched.remove(d-1);
+			nodes_searched.add(d-1, cur_ns + 1.);
 			if (machine.isTerminal(n.state)) {
 				depth += d;
 				continue;
 			}
-			breadth += machine.getLegalJointMoves(n.state).size();
+			if (breadth.size() < d) {
+				breadth.add(0.);
+			}
+			double cur_breadth = breadth.get(d-1);
+			breadth.remove(d-1);
+			breadth.add(d-1, cur_breadth + machine.getLegalJointMoves(n.state).size());
+			//System.out.print(breadth + " ");
+			//System.out.print(machine.getLegalJointMoves(n.state).size() + " ");
 			Collection<XNodeLight> children = n.getChildren(machine, self_index).values();
 			int[] charge_depth = new int[1];
 			machine.performDepthCharge(n.state, charge_depth);
@@ -149,12 +166,15 @@ public class MemoryGoat extends XStateMachineGamer {
 			}
 			//System.out.println(q_d.peek() + " " + q.peek().toString());
 		}
-		double avg_breadth = 1. * breadth / nodes_searched;
-		double avg_depth = 1. * depth / nodes_searched;
-		double size_est = Math.pow(avg_breadth, avg_depth);
-		double charge_est = depthCharges / getMatch().getStartClock() * getMatch().getPlayClock();
-		System.out.println("breadth ~ " + avg_breadth);
-		System.out.println("depth ~ " + avg_depth);
+		double size_est = 1.;
+		for (int i = 0; i < breadth.size(); ++i) {
+			System.out.println(i + ": breadth: " + breadth.get(i) + " searched: " + nodes_searched.get(i));
+			size_est *= breadth.get(i) / nodes_searched.get(i);
+		}
+		double charge_est = depthCharges / (num_rests) * getMatch().getPlayClock();
+		//System.out.println("Nodes searched for data: " + nodes_searched);
+		//System.out.println("breadth ~ " + avg_breadth);
+		//System.out.println("depth ~ " + avg_depth);
 		System.out.println("size ~ " + size_est);
 		System.out.println("charge ~ " + charge_est);
 
@@ -162,12 +182,16 @@ public class MemoryGoat extends XStateMachineGamer {
 		thread.suspend();
 		//num_roots = (int) (Math.log(size_est) / 2.);
 		num_roots = (int) (Math.sqrt(Math.sqrt(charge_est) / Math.log(size_est)));
+		num_roots = Math.min(num_roots, 3);
 		System.out.println("# roots: " + num_roots);
 		initializeRoots();
 		thread.resume();
 	}
 
 	protected void initialize(long timeout) throws MoveDefinitionException, TransitionDefinitionException, InterruptedException {
+		heuristicWeights = new HashMap<String, Double>();
+		heuristicWeights.put("differential", 16.);
+
 		matchPath = new ArrayList<XNodeLight>();
 		num_roots = 0;
 
@@ -213,17 +237,17 @@ public class MemoryGoat extends XStateMachineGamer {
 		for (int i = 0; i < num_roots; ++i) {
 			rootsAbsolute[i] = generateXNode(getCurrentState(), roles.size(), i);
 			roots[i] = rootsAbsolute[i];
-			Expand(roots[i], i);
+			Expand(roots[i], null, i);
 			C_CONST[i] = HyperParameters.generateC(hyperparams.C, hyperparams.C/4);
 		}
 
 		rootSavedAbsolute = generateXNode(getCurrentState(), roles.size(), num_roots);
-		Expand(rootSavedAbsolute, num_roots);
+		Expand(rootSavedAbsolute, null, num_roots);
 
 		rootsAbsolute[rootsAbsolute.length-1] = rootSavedAbsolute;
 		roots[roots.length-1] = rootSavedAbsolute;
-		C_CONST[roots.length-1] = HyperParameters.generateC(128, 1);
-		System.out.println("Initialized " + num_roots + " roots");
+		C_CONST[roots.length-1] = HyperParameters.generateC(hyperparams.C, hyperparams.C/4);
+		System.out.println("Initialized " + (num_roots+1) + " roots");
 	}
 
 	@Override
@@ -329,40 +353,6 @@ public class MemoryGoat extends XStateMachineGamer {
 		}
 	}
 
-	protected int alphabeta(int player, OpenBitSet state, int alpha, int beta) throws MoveDefinitionException, GoalDefinitionException, TransitionDefinitionException {
-		if (solver_machine.isTerminal(state))
-			return solver_machine.getGoal(state, roles.get(self_index));
-
-		List<List<Move>> jointMoves = solver_machine.getLegalJointMoves(state);
-		int score = 100;
-		if (player == self_index) score = 0;
-		int nextPlayer = player + 1;
-
-		if (player == self_index) {
-			for (List<Move> jointMove : jointMoves) {
-				OpenBitSet nextState = solver_machine.getNextState(state, jointMove);
-				int result = alphabeta(nextPlayer % roles.size(), nextState, alpha, beta);
-				if (result == 100 ||  result >= beta) return 100;
-				if (result > alpha) alpha = result;
-				if (result > score) score = result;
-				if(System.currentTimeMillis() > finishBy) return 0;
-			}
-		} else {
-			for (List<Move> jointMove: jointMoves) {
-				OpenBitSet nextState = solver_machine.getNextState(state, jointMove);
-				int result = alphabeta(nextPlayer % roles.size(), nextState, alpha, beta);
-				if (result == 0 || score <= alpha) return 0;
-				if (result < beta) beta = result;
-				if (result < score) score = result;
-				if(System.currentTimeMillis() > finishBy) return 0;
-			}
-		}
-
-		return score;
-
-	}
-
-
 	public class runMCTS implements Runnable {
 		@Override
 		public void run() {
@@ -372,11 +362,12 @@ public class MemoryGoat extends XStateMachineGamer {
 				int rand_idx = rand.nextInt(roots.length);
 				root_thread = roots[rand_idx];
 				path = new ArrayList<XNodeLight>();
-				if (rand_idx == num_roots && !matchPath.isEmpty()) {
+				/*if (rand_idx == num_roots && !matchPath.isEmpty()) {
 					path.addAll(matchPath);
 				} else {
 					path.add(root_thread);
-				}
+				}*/
+				path.add(root_thread);
 				//double select_start = System.currentTimeMillis();
 				try {
 					Select(root_thread, path, rand_idx);
@@ -397,9 +388,12 @@ public class MemoryGoat extends XStateMachineGamer {
 				//total_expand += (System.currentTimeMillis() - expand_start);
 				// spawn off multiple threads
 				executor.submit(new RunMe(n, path, num_per));
+				//executor.submit(new RunMe(path.get(0), path, num_per));
+
 
 				while(true) {
 					Future<Struct> f = executor.poll();
+
 					if (f == null) break;
 					Struct s = null;
 			        try {
@@ -485,6 +479,7 @@ public class MemoryGoat extends XStateMachineGamer {
 							myValue = succNode.utility[self_index] / succNode.updates;
 						}
 					}
+					if (myValue == Double.NEGATIVE_INFINITY) System.out.println("visits: " + succNode.visits + " updates: " + succNode.updates + " utility: " + succNode.utility.toString());
 				}
 				System.out.println("Move: " + move + " Value: " + (myValue == Double.NEGATIVE_INFINITY ? "N/A" : String.valueOf(myValue)) + " Visits: " + visits);
 				if (myValue > maxValue && myValue != Double.NEGATIVE_INFINITY) {
@@ -516,6 +511,7 @@ public class MemoryGoat extends XStateMachineGamer {
 				nod.utility[j] += val[j];
 			}
 			nod.updates += num;
+			nod.visits++;
 		}
 	}
 
@@ -524,17 +520,18 @@ public class MemoryGoat extends XStateMachineGamer {
 			/*System.out.println(roots.toString());
 			System.out.println(n);
 			System.out.println(n.children);*/
-			++n.visits;
+			//++n.visits;
 			if (background_machine.isTerminal(n.state)) return;
 			if (n.getChildren(machine, self_index).isEmpty()) return;
+			if (n.visits == 0) return;
 			double maxValue = Double.NEGATIVE_INFINITY;
-			double parentVal = C_CONST[root_idx] * Math.sqrt(Math.log(n.visits));
+			double parentVal = C_CONST[root_idx] * Math.sqrt(Math.log(n.updates));
 			XNodeLight maxChild = null;
 
 			int size = n.getLegalMoves(machine, self_index).length;
 
 			//select a random move with decaying probability
-			List<List<Move>> jointMoves = n.getLegalJointMoves(machine, self_index)
+			/*List<List<Move>> jointMoves = n.getLegalJointMoves(machine, self_index)
 										   .get(n.getLegalMoves(machine, self_index)[rand.nextInt(size)]);
 			EPSILON = .00 * (finishBy - System.currentTimeMillis()) / (finishBy - startedAt);
 			if (rand.nextDouble() < EPSILON) {
@@ -549,7 +546,7 @@ public class MemoryGoat extends XStateMachineGamer {
 				path.add(maxChild);
 				n = maxChild;
 				continue;
-			}
+			}*/
 
 			for(int i = 0; i < size; ++i) {
 				Move move = n.getLegalMoves(machine, self_index)[i];
@@ -559,18 +556,31 @@ public class MemoryGoat extends XStateMachineGamer {
 				for (List<Move> jointMove : n.getLegalJointMoves(machine, self_index).get(move)) {
 					XNodeLight succNode = n.getChildren(machine, self_index).get(jointMove);
 					if (succNode.visits == 0) {
-						++succNode.visits;
+						//++succNode.visits;
 						path.add(succNode);
+
+						//Double diff = differentialUtility(succNode, n);
+						//System.out.println(move + " " + diff);
+
+						//get to furthest depth expanded, randomly
+						while (!succNode.getChildren(machine, self_index).isEmpty()) {
+							int numChildren = succNode.getChildren(machine, self_index).size();
+							List<XNodeLight> succChildren = Lists.newArrayList(succNode.getChildren(machine, self_index).values());
+							XNodeLight randChild = succChildren.get(rand.nextInt(numChildren));
+							path.add(randChild);
+							succNode = randChild;
+						}
 						return;
 					}
 					double nodeValue = uctMin(succNode, parentVal);
-
+					//System.out.println("min: " + jointMove.get(self_index) + " " + nodeValue);
 					if (nodeValue > minValue) {
 						minValue = nodeValue;
 						minChild = succNode;
 					}
 				}
 				minValue = uctMax(minChild, parentVal);
+				//System.out.println("max: " + minValue);
 				if (minValue > maxValue) {
 					maxValue = minValue;
 					maxChild = minChild;
@@ -585,12 +595,13 @@ public class MemoryGoat extends XStateMachineGamer {
 
 	protected double uctMin(XNodeLight n, double parentVisits) {
 		double value = averageOpponentUtility(n);
-		return value + (parentVisits / Math.sqrt(n.visits));
+		return value + (parentVisits / Math.sqrt(n.updates));
 	}
 
 	protected double uctMax(XNodeLight n, double parentVisits) {
-		double value = n.utility[self_index] / 100. / n.visits;
-		return value + (parentVisits / Math.sqrt(n.visits));
+		//System.out.println(n);
+		double value = n.utility[self_index] / 100. / n.updates;
+		return value + (parentVisits / Math.sqrt(n.updates));
 	}
 
 	protected double averageOpponentUtility(XNodeLight n) {
@@ -601,9 +612,15 @@ public class MemoryGoat extends XStateMachineGamer {
 				if (i == self_index) continue;
 				utility += n.utility[i];
 			}
-			value = utility / 100. / (roles.size() - 1) / n.visits;
+			value = utility / 100. / (roles.size() - 1) / n.updates;
 		}
 		return value;
+	}
+
+	protected double differentialUtility(XNodeLight n, XNodeLight parent) {
+		Long xorCount = OpenBitSet.xorCount(n.state, parent.state);
+		//return xorCount.doubleValue();
+		return xorCount.doubleValue() / n.state.size() * 100.;
 	}
 
 	protected void Expand(XNodeLight n, List<XNodeLight> path, int root_idx) throws MoveDefinitionException, TransitionDefinitionException {
@@ -620,18 +637,25 @@ public class MemoryGoat extends XStateMachineGamer {
 				XNodeLight child = n.getChildren(machine, self_index).get(jointMove);
 				if(child == null) {
 					child = generateXNode(state, roles.size(), root_idx);
+
+					child.utility[self_index] += differentialUtility(child, n) * heuristicWeights.get("differential");
+					child.visits += heuristicWeights.get("differential");
+					child.updates += heuristicWeights.get("differential");
+
 					n.getLegalJointMoves(machine, self_index).get(jointMove.get(self_index)).add(jointMove);
 					n.getChildren(machine, self_index).put(jointMove, child);
 				}
 
 			}
-			path.add(n.getChildren(machine, self_index).get(background_machine.getRandomJointMove(n.state)));
+			if (path != null) {
+				path.add(n.getChildren(machine, self_index).get(background_machine.getRandomJointMove(n.state)));
+			}
 		} else if (!background_machine.isTerminal(n.state)) {
 			//System.out.println("ERROR. Tried to expand node that was previously expanded (2)");
 		}
 	}
 
-	protected void Expand(XNodeLight n, int root_idx) throws MoveDefinitionException, TransitionDefinitionException {//Assume only expand from max node
+	/*protected void Expand(XNodeLight n, int root_idx) throws MoveDefinitionException, TransitionDefinitionException {//Assume only expand from max node
 
 		if (n.getChildren(machine, self_index).isEmpty() && !machine.isTerminal(n.state)) {
 			List<Move> moves = machine.getLegalMoves(n.state, self_index);
@@ -654,7 +678,7 @@ public class MemoryGoat extends XStateMachineGamer {
 		} else if (!machine.isTerminal(n.state)) {
 			System.out.println("ERROR. Tried to expand node that was previously expanded (1)");
 		}
-	}
+	}*/
 
 	@Override
 	public void stateMachineStop() {
@@ -902,7 +926,7 @@ public class MemoryGoat extends XStateMachineGamer {
         }
 
         if (savedParams == null) {
-        	savedParams = new HyperParameters(HyperParameters.generateC(2, 1));
+        	savedParams = new HyperParameters(HyperParameters.generateC(40, 10));
         }
 
         return savedParams;

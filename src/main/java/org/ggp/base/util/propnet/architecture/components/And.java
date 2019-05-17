@@ -32,6 +32,16 @@ public final class And extends Component
 	@Override
 	public String toString()
 	{
+		return "AND";
+
+	}
+
+	/**
+	 * @see org.ggp.base.util.propnet.architecture.Component#toDot()
+	 */
+	@Override
+	public String toDot()
+	{
 		return toDot("invhouse", "grey", "AND");
 	}
 

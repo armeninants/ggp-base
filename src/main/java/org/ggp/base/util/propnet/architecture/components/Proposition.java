@@ -77,6 +77,15 @@ public class Proposition extends Component
 	@Override
 	public String toString()
 	{
+		return name.toString();
+	}
+
+	/**
+	 * @see org.ggp.base.util.propnet.architecture.Component#toDot()
+	 */
+	@Override
+	public String toDot()
+	{
 		return toDot("circle", value ? "red" : "white", name.toString());
 	}
 

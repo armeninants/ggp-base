@@ -33,7 +33,7 @@ public final class SampleMonteCarloGamer extends SampleGamer
 	{
 	    StateMachine theMachine = getStateMachine();
 		long start = System.currentTimeMillis();
-		long finishBy = timeout - 1000;
+		long finishBy = timeout - 2000;
 
 		List<Move> moves = theMachine.getLegalMoves(getCurrentState(), getRole());
 		Move selection = moves.get(0);
