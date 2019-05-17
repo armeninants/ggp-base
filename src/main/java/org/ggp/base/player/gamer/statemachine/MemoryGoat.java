@@ -926,7 +926,7 @@ public class MemoryGoat extends XStateMachineGamer {
         }
 
         if (savedParams == null) {
-        	savedParams = new HyperParameters(HyperParameters.generateC(40, 10));
+        	savedParams = new HyperParameters(HyperParameters.generateC(10, 2));
         }
 
         return savedParams;
