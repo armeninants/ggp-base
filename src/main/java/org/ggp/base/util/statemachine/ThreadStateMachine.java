@@ -44,7 +44,7 @@ public class ThreadStateMachine extends XMachine {
     	this.compInfo = Arrays.copyOf(x.getCompInfo(), x.getCompInfo().length);
     	this.connecTable = Arrays.copyOf(x.getConnecTable(),x.getConnecTable().length);
     	this.rand = new XORShiftRandom();
-    	this.q = new IntQueue(compInfo.length);
+    	this.q = new IntQueue(compInfo.length+1);
     	this.self_index = ind;
     }
 
