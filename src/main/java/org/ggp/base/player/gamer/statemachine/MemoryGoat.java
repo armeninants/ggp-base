@@ -181,7 +181,7 @@ public class MemoryGoat extends XStateMachineGamer {
 
 
 			//num_roots = (int) (Math.log(size_est) / 2.);
-			num_roots = (int) (Math.sqrt(Math.sqrt(charge_est) / (2 * Math.log(size_est)) ));
+			num_roots = (int) (Math.sqrt(Math.sqrt(charge_est) / (3 * Math.log(size_est)) ));
 			num_roots = Math.min(num_roots, 3);
 		} else {
 			num_roots = 0;
@@ -908,7 +908,7 @@ public class MemoryGoat extends XStateMachineGamer {
         }
 
         if (savedParams == null) {
-        	savedParams = new HyperParameters(HyperParameters.generateC(10, 2));
+        	savedParams = new HyperParameters(HyperParameters.generateC(8, 2));
         }
 
         return savedParams;
