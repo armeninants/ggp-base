@@ -374,6 +374,9 @@ public class MemoryGoat extends XStateMachineGamer {
 				} catch (MoveDefinitionException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
+					System.out.println(path.size());
+					System.out.println(rand_idx);
+					run();
 				}
 				//total_select += (System.currentTimeMillis() - select_start);
 				XNodeLight n = path.get(path.size() - 1);
