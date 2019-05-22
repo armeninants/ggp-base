@@ -44,7 +44,7 @@ public class ThreadStateMachine extends XMachine {
     	this.compInfo = Arrays.copyOf(x.getCompInfo(), x.getCompInfo().length);
     	this.connecTable = Arrays.copyOf(x.getConnecTable(),x.getConnecTable().length);
     	this.rand = new XORShiftRandom();
-    	this.q = new IntQueue(compInfo.length+1);
+    	this.q = new IntQueue(compInfo.length);
     	this.self_index = ind;
     }
 
@@ -109,7 +109,7 @@ public class ThreadStateMachine extends XMachine {
     }
 
 	protected void propagate() {
-
+		System.out.println("Beginning propogate");
     	while(!(q.num_queued == 0)) {
     		int value = q.remove();
     		int compId = (NOT_CURR_VAL_MASK & value);
@@ -150,6 +150,7 @@ public class ThreadStateMachine extends XMachine {
         	}
     	}
     	q.clear();
+		System.out.println("Ending propogate");
     }
 
 
