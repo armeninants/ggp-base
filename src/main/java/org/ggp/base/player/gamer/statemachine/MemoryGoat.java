@@ -171,19 +171,23 @@ public class MemoryGoat extends XStateMachineGamer {
 			System.out.println(i + ": breadth: " + breadth.get(i) + " searched: " + nodes_searched.get(i));
 			size_est *= breadth.get(i) / nodes_searched.get(i);
 		}
+		if (num_rests > 0) {
 		double charge_est = depthCharges / (num_rests) * getMatch().getPlayClock();
-		//System.out.println("Nodes searched for data: " + nodes_searched);
-		//System.out.println("breadth ~ " + avg_breadth);
-		//System.out.println("depth ~ " + avg_depth);
-		System.out.println("size ~ " + size_est);
-		System.out.println("charge ~ " + charge_est);
+			//System.out.println("Nodes searched for data: " + nodes_searched);
+			//System.out.println("breadth ~ " + avg_breadth);
+			//System.out.println("depth ~ " + avg_depth);
+			System.out.println("size ~ " + size_est);
+			System.out.println("charge ~ " + charge_est);
 
 
-		thread.suspend();
-		//num_roots = (int) (Math.log(size_est) / 2.);
-		num_roots = (int) (Math.sqrt(Math.sqrt(charge_est) / Math.log(size_est)));
-		num_roots = Math.min(num_roots, 3);
+			//num_roots = (int) (Math.log(size_est) / 2.);
+			num_roots = (int) (Math.sqrt(Math.sqrt(charge_est) / (2 * Math.log(size_est)) ));
+			num_roots = Math.min(num_roots, 3);
+		} else {
+			num_roots = 0;
+		}
 		System.out.println("# roots: " + num_roots);
+		thread.suspend();
 		initializeRoots();
 		thread.resume();
 	}
