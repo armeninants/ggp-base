@@ -521,9 +521,9 @@ public class MemoryGoat extends XStateMachineGamer {
 			System.out.println(n);
 			System.out.println(n.children);*/
 			//++n.visits;
-			if (background_machine.isTerminal(n.state)) return;
-			if (n.getChildren(machine, self_index).isEmpty()) return;
 			if (n.visits == 0) return;
+			if (n.getChildren(machine, self_index).isEmpty()) return;
+			if (background_machine.isTerminal(n.state)) return;
 			double maxValue = Double.NEGATIVE_INFINITY;
 			double parentVal = C_CONST[root_idx] * Math.sqrt(Math.log(n.updates));
 			XNodeLight maxChild = null;
@@ -654,31 +654,6 @@ public class MemoryGoat extends XStateMachineGamer {
 			//System.out.println("ERROR. Tried to expand node that was previously expanded (2)");
 		}
 	}
-
-	/*protected void Expand(XNodeLight n, int root_idx) throws MoveDefinitionException, TransitionDefinitionException {//Assume only expand from max node
-
-		if (n.getChildren(machine, self_index).isEmpty() && !machine.isTerminal(n.state)) {
-			List<Move> moves = machine.getLegalMoves(n.state, self_index);
-			int size = moves.size();
-			n.setLegalMoves(moves.toArray(new Move[size]));
-			for (int i = 0; i < size; ++i) {
-				Move move = n.getLegalMoves(machine, self_index)[i];
-				n.getLegalJointMoves(machine, self_index).put(move, new ArrayList<List<Move>>());
-			}
-			for (List<Move> jointMove: machine.getLegalJointMoves(n.state)) {
-				OpenBitSet state = machine.getNextState(n.state, jointMove);
-				XNodeLight child = n.getChildren(machine, self_index).get(jointMove);
-				if(child == null) {
-					child = generateXNode(state, roles.size(), root_idx);
-					n.getLegalJointMoves(machine, self_index).get(jointMove.get(self_index)).add(jointMove);
-					n.getChildren(machine, self_index).put(jointMove, child);
-				}
-
-			}
-		} else if (!machine.isTerminal(n.state)) {
-			System.out.println("ERROR. Tried to expand node that was previously expanded (1)");
-		}
-	}*/
 
 	@Override
 	public void stateMachineStop() {

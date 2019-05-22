@@ -109,7 +109,7 @@ public class ThreadStateMachine extends XMachine {
     }
 
 	protected void propagate() {
-		System.out.println("Beginning propogate");
+
     	while(!(q.num_queued == 0)) {
     		int value = q.remove();
     		int compId = (NOT_CURR_VAL_MASK & value);
@@ -150,7 +150,6 @@ public class ThreadStateMachine extends XMachine {
         	}
     	}
     	q.clear();
-		System.out.println("Ending propogate");
     }
 
 
