@@ -181,7 +181,7 @@ public class MemoryGoat extends XStateMachineGamer {
 
 
 			//num_roots = (int) (Math.log(size_est) / 2.);
-			num_roots = (int) (Math.sqrt(Math.sqrt(charge_est) / (3 * Math.log(size_est)) ));
+			num_roots = (int) (Math.sqrt(Math.sqrt(charge_est) / (Math.log(size_est)) ) / 3.0);
 			num_roots = Math.min(num_roots, 3);
 		} else {
 			num_roots = 0;
