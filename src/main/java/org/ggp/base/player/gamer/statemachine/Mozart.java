@@ -9,6 +9,7 @@ import java.util.Random;
 import java.util.Stack;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletionService;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.Executors;
@@ -234,7 +235,7 @@ public class Mozart extends XStateMachineGamer {
 			newRoot = roots[roots.length-1];
 			rootSaved = savedNodes.get(savedNodes.size()-1);
 		} else {
-			rootSaved = new HashMap<OpenBitSet, XNodeLight>();
+			rootSaved = new ConcurrentHashMap<OpenBitSet, XNodeLight>();
 			newRoot = generateXNode(getCurrentState(), roles.size(), num_roots, false);
 		}
 
@@ -242,7 +243,7 @@ public class Mozart extends XStateMachineGamer {
 		C_CONST = new double[num_roots+1];
 		savedNodes = new ArrayList<Map<OpenBitSet, XNodeLight>>();
 		for (int i = 0; i < num_roots; ++i) {
-			savedNodes.add(new HashMap<OpenBitSet, XNodeLight>());
+			savedNodes.add(new ConcurrentHashMap<OpenBitSet, XNodeLight>());
 			roots[i] = generateXNode(getCurrentState(), roles.size(), i, CACHING);
 			C_CONST[i] = HyperParameters.generateC(hyperparams.C, hyperparams.C/4);
 			Expand(roots[i], null, i);
@@ -322,7 +323,7 @@ public class Mozart extends XStateMachineGamer {
 			}
 			System.out.println("Restarting Root at index " + worstRoot);
 			System.out.println("Best Root at index " + bestRoot);
-			savedNodes.set(worstRoot, new HashMap<OpenBitSet, XNodeLight>());
+			savedNodes.set(worstRoot, new ConcurrentHashMap<OpenBitSet, XNodeLight>());
 			roots[worstRoot] = generateXNode(currentState, roles.size(), worstRoot, CACHING);
 			C_CONST[worstRoot] = HyperParameters.generateC(C_CONST[bestRoot] - C_CONST[bestRoot]/16, C_CONST[bestRoot]/4);
 		}
