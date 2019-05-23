@@ -1,16 +1,10 @@
 package org.ggp.base.player.gamer.statemachine;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Stack;
 import java.util.concurrent.Callable;
@@ -36,8 +30,7 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 import com.google.common.collect.Lists;
 
-public class MemoryGoat extends XStateMachineGamer {
-	public static final boolean SAVE_MATCH = false;
+public class Mozart extends XStateMachineGamer {
 	public static final boolean FACTOR = true;
 
 	protected Player p;
@@ -48,11 +41,9 @@ public class MemoryGoat extends XStateMachineGamer {
 	private long finishBy;
 	private long startedAt;
 	private int num_roots;
-	private volatile XNodeLightMemory[] roots;
-	private volatile XNodeLightMemory[] rootsAbsolute;
-	private volatile XNodeLightMemory rootSavedAbsolute;
-	private volatile Map<OpenBitSet, XNodeLightMemory> savedNodes;
-	private List<XNodeLightMemory> path;
+	private volatile XNodeLight[] roots;
+	private volatile Map<OpenBitSet, XNodeLight> savedNodes;
+	private List<XNodeLight> path;
 	private CompletionService<Struct> executor;
 	private ThreadPoolExecutor thread_pool;
 	private Thread thread;
@@ -65,21 +56,20 @@ public class MemoryGoat extends XStateMachineGamer {
 	private volatile int loops = 0;
 	private volatile int play_loops = 0;
 
-	private HyperParameters hyperparams;
+	private HyperParameters hyperparams = new HyperParameters(8.0);
 	private volatile double[] C_CONST;
 	private volatile double EPSILON = .1;
 	private Random rand = new Random();
 
-	protected List<XNodeLightMemory> matchPath;
 	protected Map<String, Double> heuristicWeights;
 
 
 	public class Struct {
 		public double[] v;
-		public List<XNodeLightMemory> p;
+		public List<XNodeLight> p;
 		public int n;
 
-		public Struct(double[] val, List<XNodeLightMemory> arr, int num) {
+		public Struct(double[] val, List<XNodeLight> arr, int num) {
 			this.v = val;
 			this.p = arr;
 			this.n = num;
@@ -88,7 +78,6 @@ public class MemoryGoat extends XStateMachineGamer {
 
 	@Override
 	public XStateMachine getInitialStateMachine() {
-		XStateMachine machine = loadStateMachine();
 		if (machine == null) {
 			machine = new XStateMachine(FACTOR, new Role(getRoleName()));
 		}
@@ -129,14 +118,14 @@ public class MemoryGoat extends XStateMachineGamer {
 		breadth.add(0.);
 		nodes_searched.add(1.);
 		double depth = 0.;
-		Stack<XNodeLightMemory> q = new Stack<XNodeLightMemory>();
+		Stack<XNodeLight> q = new Stack<XNodeLight>();
 		Stack<Integer> q_d = new Stack<Integer>();
 		q.push(roots[num_roots]);
 		q_d.push(1);
 		System.out.println("current time: " + System.currentTimeMillis());
 		System.out.println("time limit: " + finishBy);
 		while (!q.isEmpty() && System.currentTimeMillis() < finishBy+400) {
-			XNodeLightMemory n = q.pop();
+			XNodeLight n = q.pop();
 			Integer d = q_d.pop();
 			if (nodes_searched.size() < d) {
 				nodes_searched.add(1.);
@@ -156,11 +145,11 @@ public class MemoryGoat extends XStateMachineGamer {
 			breadth.add(d-1, cur_breadth + machine.getLegalJointMoves(n.state).size());
 			//System.out.print(breadth + " ");
 			//System.out.print(machine.getLegalJointMoves(n.state).size() + " ");
-			Collection<XNodeLightMemory> children = n.getChildren(machine, self_index).values();
+			Collection<XNodeLight> children = n.getChildren(self_index).values();
 			int[] charge_depth = new int[1];
 			machine.performDepthCharge(n.state, charge_depth);
 			depth += charge_depth[0] + d;
-			for (XNodeLightMemory child : children) {
+			for (XNodeLight child : children) {
 				q.push(child);
 				q_d.push(d+1);
 			}
@@ -196,21 +185,13 @@ public class MemoryGoat extends XStateMachineGamer {
 		heuristicWeights = new HashMap<String, Double>();
 		heuristicWeights.put("differential", 16.);
 
-		matchPath = new ArrayList<XNodeLightMemory>();
 		num_roots = 0;
 
 		machine = getStateMachine();
 		roles = machine.getRoles();
 		self_index = roles.indexOf(getRole());
+		System.out.println("Role index: " + self_index);
 		background_machine = new ThreadStateMachine(machine,self_index);
-
-
-		//lets load the tree here
-		//rootSavedAbsolute = loadTree();
-		savedNodes = loadGraph();
-		hyperparams = loadHyperParameters();
-		//rootSavedAbsolute = savedNodes.get(getCurrentState());
-		System.out.println("Number of loaded nodes: " + savedNodes.size());
 
 		initializeRoots();
 
@@ -235,21 +216,18 @@ public class MemoryGoat extends XStateMachineGamer {
 	}
 
 	protected void initializeRoots() throws MoveDefinitionException, TransitionDefinitionException {
-		rootsAbsolute = new XNodeLightMemory[num_roots+1];
-		roots = new XNodeLightMemory[num_roots+1];
+		roots = new XNodeLight[num_roots+1];
 		C_CONST = new double[num_roots+1];
 		for (int i = 0; i < num_roots; ++i) {
-			rootsAbsolute[i] = generateXNode(getCurrentState(), roles.size(), i);
-			roots[i] = rootsAbsolute[i];
+			roots[i] = generateXNode(getCurrentState(), roles.size(), i);
 			Expand(roots[i], null, i);
 			C_CONST[i] = HyperParameters.generateC(hyperparams.C, hyperparams.C/4);
 		}
 
-		rootSavedAbsolute = generateXNode(getCurrentState(), roles.size(), num_roots);
-		Expand(rootSavedAbsolute, null, num_roots);
+		XNodeLight newRoot = generateXNode(getCurrentState(), roles.size(), num_roots);
+		Expand(newRoot, null, num_roots);
 
-		rootsAbsolute[rootsAbsolute.length-1] = rootSavedAbsolute;
-		roots[roots.length-1] = rootSavedAbsolute;
+		roots[roots.length-1] = newRoot;
 		C_CONST[roots.length-1] = HyperParameters.generateC(hyperparams.C, hyperparams.C/4);
 		System.out.println("Initialized " + (num_roots+1) + " roots");
 	}
@@ -282,7 +260,7 @@ public class MemoryGoat extends XStateMachineGamer {
 			for (List<Move> jointMove : machine.getLegalJointMoves(roots[i].state)) {
 				OpenBitSet nextState = machine.getNextState(roots[i].state, jointMove);
 				if (currentState.equals(nextState)) {
-					roots[i] = roots[i].getChildren(machine, self_index).get(jointMove);
+					roots[i] = roots[i].getChildren(self_index).get(jointMove);
 					if (roots[i] == null) {
 						System.out.println("NOT IN MAP");
 						break;
@@ -297,22 +275,26 @@ public class MemoryGoat extends XStateMachineGamer {
 			}
 		}
 
-		matchPath.add(roots[roots.length-1]);
-
 		//restart the worst root
 		if (roots.length > 1) {
 			int worstRoot = 0;
+			int bestRoot = 0;
 			double worstScore = 100.1;
+			double bestScore = -1.0;
 			for (int i=0; i < num_roots; ++i) {
 				double utility = roots[i].utility[self_index] / roots[i].updates;
 				if (utility < worstScore) {
 					worstRoot = i;
 					worstScore = utility;
 				}
+				if (utility > bestScore) {
+					bestRoot = i;
+					bestScore = utility;
+				}
 			}
 			System.out.println("Restarting Root at index " + worstRoot);
 			roots[worstRoot] = generateXNode(currentState, roles.size(), worstRoot);
-			C_CONST[worstRoot] = HyperParameters.generateC(hyperparams.C, hyperparams.C/4);
+			C_CONST[worstRoot] = HyperParameters.generateC(C_CONST[bestRoot] - C_CONST[bestRoot]/16, C_CONST[bestRoot]/4);
 		}
 	}
 
@@ -360,12 +342,12 @@ public class MemoryGoat extends XStateMachineGamer {
 	public class runMCTS implements Runnable {
 		@Override
 		public void run() {
-			XNodeLightMemory root_thread;
+			XNodeLight root_thread;
 			while (true) {
 				double start = System.currentTimeMillis();
 				int rand_idx = rand.nextInt(roots.length);
 				root_thread = roots[rand_idx];
-				path = new ArrayList<XNodeLightMemory>();
+				path = new ArrayList<XNodeLight>();
 				/*if (rand_idx == num_roots && !matchPath.isEmpty()) {
 					path.addAll(matchPath);
 				} else {
@@ -383,7 +365,7 @@ public class MemoryGoat extends XStateMachineGamer {
 					run();
 				}
 				//total_select += (System.currentTimeMillis() - select_start);
-				XNodeLightMemory n = path.get(path.size() - 1);
+				XNodeLight n = path.get(path.size() - 1);
 				//double expand_start = System.currentTimeMillis();
 				try {
 					Expand(n, path, rand_idx);
@@ -423,11 +405,11 @@ public class MemoryGoat extends XStateMachineGamer {
 	}
 
 	public class RunMe implements Callable<Struct> {
-		private XNodeLightMemory node;
-		private List<XNodeLightMemory> p;
+		private XNodeLight node;
+		private List<XNodeLight> p;
 		private int num;
 
-		public RunMe(XNodeLightMemory n, List<XNodeLightMemory> arr, int number) {
+		public RunMe(XNodeLight n, List<XNodeLight> arr, int number) {
 			this.node = n;
 			this.p = arr;
 			this.num = number;
@@ -462,21 +444,21 @@ public class MemoryGoat extends XStateMachineGamer {
 
 	protected Move bestMove() throws MoveDefinitionException {
 		double maxValue = Double.NEGATIVE_INFINITY;
-		Move maxMove = roots[roots.length-1].getLegalMoves(machine, self_index)[0];
+		Move maxMove = roots[roots.length-1].getLegalMoves(self_index)[0];
 		int maxIdx = num_roots;
-		Move maxSavedMove = roots[roots.length-1].getLegalMoves(machine, self_index)[0];
+		Move maxSavedMove = roots[roots.length-1].getLegalMoves(self_index)[0];
 
 		int root_idx = 0;
-		for (XNodeLightMemory n : roots) {
+		for (XNodeLight n : roots) {
 			System.out.println("-- C: " + C_CONST[root_idx]);
-			int size = n.getLegalMoves(machine, self_index).length;
+			int size = n.getLegalMoves(self_index).length;
 			for(int i = 0; i < size; ++i) {
-				Move move = n.getLegalMoves(machine, self_index)[i];
+				Move move = n.getLegalMoves(self_index)[i];
 				double oppValue = Double.NEGATIVE_INFINITY;
 				double myValue = Double.NEGATIVE_INFINITY;
 				double visits = 0;
-				for (List<Move> jointMove : n.getLegalJointMoves(machine, self_index).get(move)) {
-					XNodeLightMemory succNode = n.getChildren(machine, self_index).get(jointMove);
+				for (List<Move> jointMove : n.getLegalJointMoves(self_index).get(move)) {
+					XNodeLight succNode = n.getChildren(self_index).get(jointMove);
 					if (succNode.updates != 0) {
 						//double nodeValue = succNode.utility[self_index] / succNode.updates;
 						double nodeValue = averageOpponentUtility(succNode);
@@ -509,9 +491,9 @@ public class MemoryGoat extends XStateMachineGamer {
 		return maxMove;
 	}
 
-	protected void Backpropogate(double[] val, List<XNodeLightMemory> path, int num) {
+	protected void Backpropogate(double[] val, List<XNodeLight> path, int num) {
 		int size = path.size();
-		XNodeLightMemory nod = path.get(size - 1);
+		XNodeLight nod = path.get(size - 1);
 		for (int i = 0; i < size; ++i) {
 			nod = path.get(i);
 			for (int j = 0; j < roles.size(); ++j) {
@@ -522,46 +504,24 @@ public class MemoryGoat extends XStateMachineGamer {
 		}
 	}
 
-	protected void Select(XNodeLightMemory n, List<XNodeLightMemory> path, int root_idx) throws MoveDefinitionException {
+	protected void Select(XNodeLight n, List<XNodeLight> path, int root_idx) throws MoveDefinitionException {
 		while(true) {
-			/*System.out.println(roots.toString());
-			System.out.println(n);
-			System.out.println(n.children);*/
-			//++n.visits;
 			if (n.visits == 0) return;
-			if (n.getChildren(machine, self_index).isEmpty()) return;
+			if (n.getChildren(self_index).isEmpty()) return;
 			if (background_machine.isTerminal(n.state)) return;
 			double maxValue = Double.NEGATIVE_INFINITY;
 			double parentVal = C_CONST[root_idx] * Math.sqrt(Math.log(n.updates));
-			XNodeLightMemory maxChild = null;
+			XNodeLight maxChild = null;
 
-			int size = n.getLegalMoves(machine, self_index).length;
-
-			//select a random move with decaying probability
-			/*List<List<Move>> jointMoves = n.getLegalJointMoves(machine, self_index)
-										   .get(n.getLegalMoves(machine, self_index)[rand.nextInt(size)]);
-			EPSILON = .00 * (finishBy - System.currentTimeMillis()) / (finishBy - startedAt);
-			if (rand.nextDouble() < EPSILON) {
-				//System.out.println("RANDOM EPSILON SELECT");
-				XNodeLightMemory succNode = n.getChildren(machine, self_index).get(jointMoves.get(rand.nextInt(jointMoves.size())));
-				if (succNode.visits == 0) {
-					++succNode.visits;
-					path.add(succNode);
-					return;
-				}
-				maxChild = succNode;
-				path.add(maxChild);
-				n = maxChild;
-				continue;
-			}*/
+			int size = n.getLegalMoves(self_index).length;
 
 			for(int i = 0; i < size; ++i) {
-				Move move = n.getLegalMoves(machine, self_index)[i];
+				Move move = n.getLegalMoves(self_index)[i];
 
 				double minValue = Double.NEGATIVE_INFINITY;
-				XNodeLightMemory minChild = null;
-				for (List<Move> jointMove : n.getLegalJointMoves(machine, self_index).get(move)) {
-					XNodeLightMemory succNode = n.getChildren(machine, self_index).get(jointMove);
+				XNodeLight minChild = null;
+				for (List<Move> jointMove : n.getLegalJointMoves(self_index).get(move)) {
+					XNodeLight succNode = n.getChildren(self_index).get(jointMove);
 					if (succNode.visits == 0) {
 						//++succNode.visits;
 						path.add(succNode);
@@ -570,10 +530,10 @@ public class MemoryGoat extends XStateMachineGamer {
 						//System.out.println(move + " " + diff);
 
 						//get to furthest depth expanded, randomly
-						while (!succNode.getChildren(machine, self_index).isEmpty()) {
-							int numChildren = succNode.getChildren(machine, self_index).size();
-							List<XNodeLightMemory> succChildren = Lists.newArrayList(succNode.getChildren(machine, self_index).values());
-							XNodeLightMemory randChild = succChildren.get(rand.nextInt(numChildren));
+						while (!succNode.getChildren(self_index).isEmpty()) {
+							int numChildren = succNode.getChildren(self_index).size();
+							List<XNodeLight> succChildren = Lists.newArrayList(succNode.getChildren(self_index).values());
+							XNodeLight randChild = succChildren.get(rand.nextInt(numChildren));
 							path.add(randChild);
 							succNode = randChild;
 						}
@@ -600,18 +560,18 @@ public class MemoryGoat extends XStateMachineGamer {
 	}
 
 
-	protected double uctMin(XNodeLightMemory n, double parentVisits) {
+	protected double uctMin(XNodeLight n, double parentVisits) {
 		double value = averageOpponentUtility(n);
 		return value + (parentVisits / Math.sqrt(n.updates));
 	}
 
-	protected double uctMax(XNodeLightMemory n, double parentVisits) {
+	protected double uctMax(XNodeLight n, double parentVisits) {
 		//System.out.println(n);
 		double value = n.utility[self_index] / 100. / n.updates;
 		return value + (parentVisits / Math.sqrt(n.updates));
 	}
 
-	protected double averageOpponentUtility(XNodeLightMemory n) {
+	protected double averageOpponentUtility(XNodeLight n) {
 		double value = 0.;
 		if (roles.size() > 1) {
 			double utility = 0;
@@ -624,24 +584,24 @@ public class MemoryGoat extends XStateMachineGamer {
 		return value;
 	}
 
-	protected double differentialUtility(XNodeLightMemory n, XNodeLightMemory parent) {
+	protected double differentialUtility(XNodeLight n, XNodeLight parent) {
 		Long xorCount = OpenBitSet.xorCount(n.state, parent.state);
 		//return xorCount.doubleValue();
 		return xorCount.doubleValue() / n.state.size() * 100.;
 	}
 
-	protected void Expand(XNodeLightMemory n, List<XNodeLightMemory> path, int root_idx) throws MoveDefinitionException, TransitionDefinitionException {
-		if (n.getChildren(machine, self_index).isEmpty() && !background_machine.isTerminal(n.state)) {
+	protected void Expand(XNodeLight n, List<XNodeLight> path, int root_idx) throws MoveDefinitionException, TransitionDefinitionException {
+		if (n.getChildren(self_index).isEmpty() && !background_machine.isTerminal(n.state)) {
 			List<Move> moves = background_machine.getLegalMoves(n.state, self_index);
 			int size = moves.size();
 			n.setLegalMoves(moves.toArray(new Move[size]));
 			for (int i = 0; i < size; ++i) {
-				Move move = n.getLegalMoves(machine, self_index)[i];
-				n.getLegalJointMoves(machine, self_index).put(move, new ArrayList<List<Move>>());
+				Move move = n.getLegalMoves(self_index)[i];
+				n.getLegalJointMoves(self_index).put(move, new ArrayList<List<Move>>());
 			}
 			for (List<Move> jointMove: background_machine.getLegalJointMoves(n.state)) {
 				OpenBitSet state = background_machine.getNextState(n.state, jointMove);
-				XNodeLightMemory child = n.getChildren(machine, self_index).get(jointMove);
+				XNodeLight child = n.getChildren(self_index).get(jointMove);
 				if(child == null) {
 					child = generateXNode(state, roles.size(), root_idx);
 
@@ -649,13 +609,13 @@ public class MemoryGoat extends XStateMachineGamer {
 					child.visits += heuristicWeights.get("differential");
 					child.updates += heuristicWeights.get("differential");
 
-					n.getLegalJointMoves(machine, self_index).get(jointMove.get(self_index)).add(jointMove);
-					n.getChildren(machine, self_index).put(jointMove, child);
+					n.getLegalJointMoves(self_index).get(jointMove.get(self_index)).add(jointMove);
+					n.getChildren(self_index).put(jointMove, child);
 				}
 
 			}
 			if (path != null) {
-				path.add(n.getChildren(machine, self_index).get(background_machine.getRandomJointMove(n.state)));
+				path.add(n.getChildren(self_index).get(background_machine.getRandomJointMove(n.state)));
 			}
 		} else if (!background_machine.isTerminal(n.state)) {
 			//System.out.println("ERROR. Tried to expand node that was previously expanded (2)");
@@ -664,18 +624,6 @@ public class MemoryGoat extends XStateMachineGamer {
 
 	@Override
 	public void stateMachineStop() {
-		try {
-			pruneTree(rootSavedAbsolute);
-		} catch (MoveDefinitionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		//saveTree();
-		if (SAVE_MATCH) {
-			saveGraph();
-			saveMachine();
-			saveHyperParameters();
-		}
 		cleanup();
 	}
 
@@ -691,265 +639,24 @@ public class MemoryGoat extends XStateMachineGamer {
 		thread.stop();
 	}
 
-	protected void saveTree() {
-		int numRules = getMatch().getGame().getRules().size();
-		String filename = "gametree" + numRules + ".goat";
-		try {
-            //Saving of object in a file
-            FileOutputStream file = new FileOutputStream(filename);
-            ObjectOutputStream out = new ObjectOutputStream(file);
-
-            // Method for serialization of object
-            //out.writeObject(rootAbsolute);
-            out.writeObject(rootSavedAbsolute);
-
-            out.close();
-            file.close();
-
-            System.out.println("Saved game tree in " + filename);
-
-        } catch(IOException ex) {
-            System.out.println("IOException when writing to file " + filename);
-        }
-	}
-
-	protected XNodeLightMemory loadTree() {
-		int numRules = getMatch().getGame().getRules().size();
-		String filename = "gametree" + numRules + ".goat";
-		// Deserialization
-		XNodeLightMemory savedRoot = null;
-        try
-        {
-            // Reading the object from a file
-            FileInputStream file = new FileInputStream(filename);
-            ObjectInputStream in = new ObjectInputStream(file);
-
-            // Method for deserialization of object
-            savedRoot = (XNodeLightMemory) in.readObject();
-
-            in.close();
-            file.close();
-
-            System.out.println("Loaded game tree from " + filename);
-        }
-
-        catch(IOException ex)
-        {
-            System.out.println("IOException when loading from file " + filename);
-        }
-
-        catch(ClassNotFoundException ex)
-        {
-            System.out.println("ClassNotFoundException when loading from file " + filename);
-        }
-        return savedRoot;
-	}
-
-	protected void saveGraph() {
-		int numRules = getMatch().getGame().getRules().size();
-		String filename = "gamegraph" + numRules + ".goat";
-		try {
-            //Saving of object in a file
-            FileOutputStream file = new FileOutputStream(filename);
-            ObjectOutputStream out = new ObjectOutputStream(file);
-
-            // Method for serialization of object
-            //out.writeObject(rootAbsolute);
-            out.writeObject(savedNodes);
-
-            out.close();
-            file.close();
-
-            System.out.println("Saved game graph in " + filename);
-
-        } catch(IOException ex) {
-            System.out.println("IOException when writing to file " + filename);
-        }
-	}
-
-	protected void saveHyperParameters() {
-		int numRules = getMatch().getGame().getRules().size();
-		String filename = "gamehyperparams" + numRules + ".goat";
-		try {
-            //Saving of object in a file
-            FileOutputStream file = new FileOutputStream(filename);
-            ObjectOutputStream out = new ObjectOutputStream(file);
-
-            // Method for serialization of object
-            //out.writeObject(rootAbsolute);
-            out.writeObject(hyperparams);
-
-            out.close();
-            file.close();
-
-            System.out.println("Saved hyper parameters in " + filename);
-
-        } catch(IOException ex) {
-            System.out.println("IOException when writing to file " + filename);
-        }
-	}
-
 	//construct a new XNode object, while maintaining the graph mapping structure
-	protected XNodeLightMemory generateXNode(OpenBitSet state, int numRoles, int rootIdx) {
-		XNodeLightMemory node = null;
-		XNodeLightMemory savedNode = savedNodes.get(state);
+	protected XNodeLight generateXNode(OpenBitSet state, int numRoles, int rootIdx) {
+		XNodeLight node = null;
+		/*XNodeLight savedNode = savedNodes.get(state);
 		if (rootIdx == num_roots) {
 			node = savedNode;
-		}
+		}*/
 
 
 		if (node == null) {
+			node = new XNodeLight(state, numRoles);
 
-			//decay our node visits based on saved value
-			/*if (savedNode != null) {
-				//double visits = Math.log(savedNode.visits) * C_CONST[num_roots];
-				//double updates = Math.log(savedNode.updates) * C_CONST[num_roots];
-				double[] utility = new double[savedNode.utility.length];
-				for (int ui = 0; ui < savedNode.utility.length; ui++) {
-					utility[ui] = savedNode.utility[ui] / savedNode.updates;
-				}
-				node = new XNodeLightMemory(state, 0., 0, utility);
-			} else {
-				node = new XNodeLightMemory(state, numRoles);
-			}*/
-			node = new XNodeLightMemory(state, numRoles);
-
-			/*if (background_machine.isTerminal(state)) {
-				node.solved = true;
-				node.visits = 1;
-				try {
-					node.utility = background_machine.getCurrGoal(state);
-				} catch (GoalDefinitionException e) {
-					System.out.println("No goal defined while generating terminal XNode");
-				}
-			}*/
-
-
-			if (rootIdx == num_roots) {
+			/*if (rootIdx == num_roots) {
 				savedNodes.put(state, node);
-			}
+			}*/
 		}
-		/*Set<XNodeLightMemory> stateNodes = graph.get(state);
-		if (stateNodes == null) {
-			stateNodes = new HashSet<XNodeLightMemory>();
-		}
-		stateNodes.add(node);*/
 
 		return node;
-	}
-
-	@SuppressWarnings("unchecked")
-	protected Map<OpenBitSet, XNodeLightMemory> loadGraph() {
-		int numRules = getMatch().getGame().getRules().size();
-		String filename = "gamegraph" + numRules + ".goat";
-		// Deserialization
-		Map<OpenBitSet, XNodeLightMemory> savedGraph = null;
-        try
-        {
-            // Reading the object from a file
-            FileInputStream file = new FileInputStream(filename);
-            ObjectInputStream in = new ObjectInputStream(file);
-
-            // Method for deserialization of object
-            savedGraph = (Map<OpenBitSet, XNodeLightMemory>) in.readObject();
-
-            in.close();
-            file.close();
-
-            System.out.println("Loaded game graph from " + filename);
-        }
-
-        catch(IOException ex)
-        {
-            System.out.println("IOException when loading from file " + filename);
-        }
-
-        catch(ClassNotFoundException ex)
-        {
-            System.out.println("ClassNotFoundException when loading from file " + filename);
-        }
-
-        if (savedGraph == null) {
-        	savedGraph = new HashMap<OpenBitSet, XNodeLightMemory>();
-        }
-
-        return savedGraph;
-	}
-
-	@SuppressWarnings("unchecked")
-	protected HyperParameters loadHyperParameters() {
-		int numRules = getMatch().getGame().getRules().size();
-		String filename = "gamehyperparams" + numRules + ".goat";
-		// Deserialization
-		HyperParameters savedParams = null;
-        try
-        {
-            // Reading the object from a file
-            FileInputStream file = new FileInputStream(filename);
-            ObjectInputStream in = new ObjectInputStream(file);
-
-            // Method for deserialization of object
-            savedParams = (HyperParameters) in.readObject();
-
-            in.close();
-            file.close();
-
-            System.out.println("Loaded hyper parameters from " + filename);
-        }
-
-        catch(IOException ex)
-        {
-            System.out.println("IOException when loading from file " + filename);
-        }
-
-        catch(ClassNotFoundException ex)
-        {
-            System.out.println("ClassNotFoundException when loading from file " + filename);
-        }
-
-        if (savedParams == null) {
-        	savedParams = new HyperParameters(HyperParameters.generateC(8, 2));
-        }
-
-        return savedParams;
-	}
-
-	protected void pruneNodes() {
-		for (Entry<OpenBitSet, XNodeLightMemory> n : savedNodes.entrySet()) {
-
-		}
-	}
-
-	protected void pruneTree(XNodeLightMemory n) throws MoveDefinitionException {
-		double p = .1;
-		while (n != null && n.getChildren(machine, self_index) != null && !n.getChildren(machine, self_index).isEmpty()) {
-			int numChildren = n.getChildren(machine, self_index).size();
-			//dont prune and move on to child
-			if (rand.nextDouble() >= p || n.getChildren(machine, self_index).size() == 1) {
-				int i = 0;
-				int r = rand.nextInt(numChildren);
-				for (XNodeLightMemory child : n.getChildren(machine, self_index).values()) {
-					if (i++ == r) n = child;
-				}
-			} else { //prune a branch that is the worst
-				double worstScore = Double.MAX_VALUE;
-				List<Move> worstChild = null;
-				for (Entry<List<Move>, XNodeLightMemory> e : n.getChildren(machine, self_index).entrySet()) {
-					List<Move> m = e.getKey();
-					XNodeLightMemory child = e.getValue();
-					double maxNodeScore = -1;
-					//get the best utility amongst players
-					for (double utility : child.utility) {
-						if (utility > maxNodeScore) maxNodeScore = utility;
-					}
-					if (maxNodeScore < worstScore) {
-						worstScore = maxNodeScore;
-						worstChild = m;
-					}
-				}
-				n.getChildren(machine, self_index).remove(worstChild);
-			}
-		}
 	}
 
 	@Override
@@ -960,7 +667,7 @@ public class MemoryGoat extends XStateMachineGamer {
 
 	@Override
 	public String getName() {
-		return "The Goat Remembers";
+		return "Mozart the Goat";
 	}
 
 
