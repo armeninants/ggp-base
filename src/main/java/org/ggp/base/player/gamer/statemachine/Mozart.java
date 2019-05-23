@@ -360,11 +360,11 @@ public class Mozart extends XStateMachineGamer {
 				//double select_start = System.currentTimeMillis();
 				try {
 					Select(root_thread, path, rand_idx);
-				} catch (MoveDefinitionException e) {
+				} catch (Exception e) {
 					// TODO Auto-generated catch block
-					e.printStackTrace();
 					System.out.println(path.size());
 					System.out.println(rand_idx);
+					e.printStackTrace();
 					run();
 				}
 				//total_select += (System.currentTimeMillis() - select_start);
