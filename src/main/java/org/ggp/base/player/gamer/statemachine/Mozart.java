@@ -42,7 +42,7 @@ public class Mozart extends XStateMachineGamer {
 	private long startedAt;
 	private int num_roots;
 	private volatile XNodeLight[] roots;
-	//private volatile Map<OpenBitSet, XNodeLight> savedNodes;
+	private volatile Map<OpenBitSet, XNodeLight>[] savedNodes;
 	private List<XNodeLight> path;
 	private CompletionService<Struct> executor;
 	private ThreadPoolExecutor thread_pool;
@@ -59,6 +59,9 @@ public class Mozart extends XStateMachineGamer {
 	private HyperParameters hyperparams = new HyperParameters(8.0);
 	private volatile double[] C_CONST;
 	private Random rand = new Random();
+
+	private volatile boolean thread_stop = false;
+	private volatile boolean mcts_thread_running = false;
 
 	protected Map<String, Double> heuristicWeights;
 
@@ -171,11 +174,21 @@ public class Mozart extends XStateMachineGamer {
 			num_roots = Math.min(num_roots, 3);
 		} else {
 			num_roots = 0;
-		}/*
+		}
 		System.out.println("# roots: " + num_roots);
-		thread.suspend();
+		//thread.suspend();
+
+		//wait for mcts to finish current iteration
+		thread_stop = true;
+		while (mcts_thread_running) {}
+
 		initializeRoots(false);
-		thread.resume();*/
+
+		//reinitialize mcts thread
+		thread = new Thread(new runMCTS());
+		thread.start();
+
+		//thread.resume();
 		num_roots = 0;
 	}
 
@@ -346,8 +359,9 @@ public class Mozart extends XStateMachineGamer {
 	public class runMCTS implements Runnable {
 		@Override
 		public void run() {
+			mcts_thread_running = true;
 			XNodeLight root_thread;
-			while (true) {
+			while (!thread_stop) {
 				double start = System.currentTimeMillis();
 				int rand_idx = rand.nextInt(roots.length);
 				root_thread = roots[rand_idx];
@@ -405,6 +419,8 @@ public class Mozart extends XStateMachineGamer {
 				total_background += (System.currentTimeMillis() - start);
 				++loops;
 			}
+			thread_stop = false;
+			mcts_thread_running = false;
 		}
 	}
 
