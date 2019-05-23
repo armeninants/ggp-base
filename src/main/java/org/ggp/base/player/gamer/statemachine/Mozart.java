@@ -174,7 +174,6 @@ public class Mozart extends XStateMachineGamer {
 		}
 		System.out.println("# roots: " + num_roots);
 		thread.suspend();
-		thread.wait(100);
 		initializeRoots(false);
 		thread.resume();
 	}
