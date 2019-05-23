@@ -271,7 +271,7 @@ public class Mozart extends XStateMachineGamer {
 		loops = 0;
 		play_loops = 0;
 		System.out.println("Background Depth Charges: " + last_depthCharges);
-		finishBy = timeout - 2500;
+		finishBy = timeout - 2700;
 		startedAt = System.currentTimeMillis();
 
 		return MCTS();
@@ -377,11 +377,7 @@ public class Mozart extends XStateMachineGamer {
 				int rand_idx = rand.nextInt(roots.length);
 				root_thread = roots[rand_idx];
 				path = new ArrayList<XNodeLight>();
-				/*if (rand_idx == num_roots && !matchPath.isEmpty()) {
-					path.addAll(matchPath);
-				} else {
-					path.add(root_thread);
-				}*/
+
 				path.add(root_thread);
 				//double select_start = System.currentTimeMillis();
 				try {
@@ -665,9 +661,9 @@ public class Mozart extends XStateMachineGamer {
 
 	protected void cleanup() {
 
+		thread_stop = true;
 		GdlPool.drainPool();
 		thread_pool.shutdownNow();
-		thread.stop();
 		savedNodes = new ArrayList<Map<OpenBitSet, XNodeLight>>();
 	}
 
