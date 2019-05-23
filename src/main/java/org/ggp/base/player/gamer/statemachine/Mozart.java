@@ -178,7 +178,6 @@ public class Mozart extends XStateMachineGamer {
 			num_roots = 0;
 		}
 		System.out.println("# roots: " + num_roots);
-		//thread.suspend();
 
 		//wait for mcts to finish current iteration
 		thread_stop = true;
@@ -190,8 +189,6 @@ public class Mozart extends XStateMachineGamer {
 		thread = new Thread(new runMCTS());
 		thread.start();
 
-		//thread.resume();
-		num_roots = 0;
 	}
 
 	protected void initialize(long timeout) throws MoveDefinitionException, TransitionDefinitionException, InterruptedException {
