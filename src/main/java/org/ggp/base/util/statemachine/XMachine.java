@@ -452,7 +452,8 @@ public abstract class XMachine
         int nDepth = 0;
         while(!isTerminal(state)) {
             nDepth++;
-            state = getNextStateDestructively(state, getRandomJointMove(state));
+            //state = getNextStateDestructively(state, getRandomJointMove(state));
+            state = getRandomNextState(state);
         }
         if(theDepth != null)
             theDepth[0] = nDepth;

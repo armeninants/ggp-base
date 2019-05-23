@@ -42,14 +42,14 @@ public class Mozart extends XStateMachineGamer {
 	private long startedAt;
 	private int num_roots;
 	private volatile XNodeLight[] roots;
-	private volatile Map<OpenBitSet, XNodeLight> savedNodes;
+	//private volatile Map<OpenBitSet, XNodeLight> savedNodes;
 	private List<XNodeLight> path;
 	private CompletionService<Struct> executor;
 	private ThreadPoolExecutor thread_pool;
 	private Thread thread;
 	private ThreadStateMachine[] thread_machines;
 	private ThreadStateMachine background_machine;
-	private ThreadStateMachine solver_machine;
+	//private ThreadStateMachine solver_machine;
 	private volatile int num_charges, num_per;
 	private volatile double total_background = 0;
 	private volatile double total_threadpool = 0;
@@ -58,7 +58,6 @@ public class Mozart extends XStateMachineGamer {
 
 	private HyperParameters hyperparams = new HyperParameters(8.0);
 	private volatile double[] C_CONST;
-	private volatile double EPSILON = .1;
 	private Random rand = new Random();
 
 	protected Map<String, Double> heuristicWeights;
@@ -78,8 +77,8 @@ public class Mozart extends XStateMachineGamer {
 
 	@Override
 	public XStateMachine getInitialStateMachine() {
-		machine = new XStateMachine(FACTOR, new Role(getRoleName()));
-		return machine;
+		XStateMachine mach = new XStateMachine(FACTOR, new Role(getRoleName()));
+		return mach;
 	}
 
 	@Override
@@ -175,7 +174,8 @@ public class Mozart extends XStateMachineGamer {
 		}
 		System.out.println("# roots: " + num_roots);
 		thread.suspend();
-		initializeRoots();
+		thread.wait(100);
+		initializeRoots(false);
 		thread.resume();
 	}
 
@@ -191,7 +191,7 @@ public class Mozart extends XStateMachineGamer {
 		System.out.println("Role index: " + self_index);
 		background_machine = new ThreadStateMachine(machine,self_index);
 
-		initializeRoots();
+		initializeRoots(true);
 
 		num_charges = 1;
 		num_per = Runtime.getRuntime().availableProcessors();
@@ -213,7 +213,15 @@ public class Mozart extends XStateMachineGamer {
 		System.out.println("NumThreads: " + num_threads);
 	}
 
-	protected void initializeRoots() throws MoveDefinitionException, TransitionDefinitionException {
+	protected void initializeRoots(Boolean first) throws MoveDefinitionException, TransitionDefinitionException {
+		XNodeLight newRoot;
+		if (!first) {
+			newRoot = roots[roots.length-1];
+		} else {
+			newRoot = generateXNode(getCurrentState(), roles.size(), num_roots);
+			Expand(newRoot, null, num_roots);
+		}
+
 		roots = new XNodeLight[num_roots+1];
 		C_CONST = new double[num_roots+1];
 		for (int i = 0; i < num_roots; ++i) {
@@ -222,8 +230,6 @@ public class Mozart extends XStateMachineGamer {
 			C_CONST[i] = HyperParameters.generateC(hyperparams.C, hyperparams.C/4);
 		}
 
-		XNodeLight newRoot = generateXNode(getCurrentState(), roles.size(), num_roots);
-		Expand(newRoot, null, num_roots);
 
 		roots[roots.length-1] = newRoot;
 		C_CONST[roots.length-1] = HyperParameters.generateC(hyperparams.C, hyperparams.C/4);
