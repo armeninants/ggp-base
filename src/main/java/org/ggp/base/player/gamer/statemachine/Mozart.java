@@ -321,6 +321,7 @@ public class Mozart extends XStateMachineGamer {
 				}
 			}
 			System.out.println("Restarting Root at index " + worstRoot);
+			System.out.println("Best Root at index " + bestRoot);
 			savedNodes.set(worstRoot, new HashMap<OpenBitSet, XNodeLight>());
 			roots[worstRoot] = generateXNode(currentState, roles.size(), worstRoot, CACHING);
 			C_CONST[worstRoot] = HyperParameters.generateC(C_CONST[bestRoot] - C_CONST[bestRoot]/16, C_CONST[bestRoot]/4);
