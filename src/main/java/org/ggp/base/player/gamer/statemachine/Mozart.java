@@ -236,7 +236,6 @@ public class Mozart extends XStateMachineGamer {
 		} else {
 			rootSaved = new HashMap<OpenBitSet, XNodeLight>();
 			newRoot = generateXNode(getCurrentState(), roles.size(), num_roots, false);
-			Expand(newRoot, null, num_roots);
 		}
 
 		roots = new XNodeLight[num_roots+1];
@@ -252,6 +251,9 @@ public class Mozart extends XStateMachineGamer {
 
 		roots[roots.length-1] = newRoot;
 		savedNodes.add(rootSaved);
+		if (first) {
+			Expand(newRoot, null, num_roots);
+		}
 
 		C_CONST[roots.length-1] = HyperParameters.generateC(hyperparams.C, hyperparams.C/4);
 		System.out.println("Initialized " + (num_roots+1) + " roots");
