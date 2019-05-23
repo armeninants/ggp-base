@@ -78,9 +78,7 @@ public class Mozart extends XStateMachineGamer {
 
 	@Override
 	public XStateMachine getInitialStateMachine() {
-		if (machine == null) {
-			machine = new XStateMachine(FACTOR, new Role(getRoleName()));
-		}
+		machine = new XStateMachine(FACTOR, new Role(getRoleName()));
 		return machine;
 	}
 
