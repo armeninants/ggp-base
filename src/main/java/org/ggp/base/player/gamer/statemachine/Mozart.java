@@ -171,11 +171,12 @@ public class Mozart extends XStateMachineGamer {
 			num_roots = Math.min(num_roots, 3);
 		} else {
 			num_roots = 0;
-		}
+		}/*
 		System.out.println("# roots: " + num_roots);
 		thread.suspend();
 		initializeRoots(false);
-		thread.resume();
+		thread.resume();*/
+		num_roots = 0;
 	}
 
 	protected void initialize(long timeout) throws MoveDefinitionException, TransitionDefinitionException, InterruptedException {
@@ -362,9 +363,9 @@ public class Mozart extends XStateMachineGamer {
 					Select(root_thread, path, rand_idx);
 				} catch (Exception e) {
 					// TODO Auto-generated catch block
+					e.printStackTrace();
 					System.out.println(path.size());
 					System.out.println(rand_idx);
-					e.printStackTrace();
 					run();
 				}
 				//total_select += (System.currentTimeMillis() - select_start);
