@@ -48,7 +48,7 @@ public final class And extends Component
 	@Override
 	public String bitString(int cValue) {
 		// TODO Auto-generated method stub
-		return null;
+		return toDot("invhouse", cValue != 0 ? "red" : "grey", "AND");
 	}
 
 }

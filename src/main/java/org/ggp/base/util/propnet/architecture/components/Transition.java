@@ -34,12 +34,12 @@ public final class Transition extends Component
 	@Override
 	public String toDot()
 	{
-		return toDot("box", "grey", "TRANSITION");
+		return toDot("box", getValue() ? "red" : "grey", "TRANSITION");
 	}
 
 	@Override
 	public String bitString(int cValue) {
 		// TODO Auto-generated method stub
-		return null;
+		return toDot("box", cValue != 0 ? "red" : "grey", "TRANSITION");
 	}
 }

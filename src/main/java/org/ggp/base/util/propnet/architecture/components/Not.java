@@ -40,6 +40,6 @@ public final class Not extends Component
 	@Override
 	public String bitString(int cValue) {
 		// TODO Auto-generated method stub
-		return null;
+		return toDot("invtriangle", cValue != 0 ? "red" : "grey", "NOT");
 	}
 }

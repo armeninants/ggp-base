@@ -751,8 +751,8 @@ public final class XPropNet implements Serializable
 		for ( Component component : compIndexMap.keySet())
 		{
 			int index = compIndexMap.get(component);
+			//sb.append("\t" + component.bitString(comps[index]) + "\n");
 			sb.append("\t" + component.bitString(comps[index]) + "\n");
-
 		}
 		sb.append("}");
 

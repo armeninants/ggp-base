@@ -92,6 +92,6 @@ public class Proposition extends Component
 	@Override
 	public String bitString(int cValue) {
 		// TODO Auto-generated method stub
-		return null;
+		return toDot("circle", cValue != 0 ? "red" : "white", name.toString());
 	}
 }
