@@ -42,7 +42,7 @@ public class Mozart extends XStateMachineGamer {
 	private long startedAt;
 	private int num_roots;
 	private volatile XNodeLight[] roots;
-	private volatile List<Map<OpenBitSet, XNodeLight>> savedNodes;
+	private volatile List<Map<OpenBitSet, XNodeLight>> savedNodes = new ArrayList<Map<OpenBitSet, XNodeLight>>();
 	private List<XNodeLight> path;
 	private CompletionService<Struct> executor;
 	private ThreadPoolExecutor thread_pool;
@@ -242,10 +242,10 @@ public class Mozart extends XStateMachineGamer {
 		C_CONST = new double[num_roots+1];
 		savedNodes = new ArrayList<Map<OpenBitSet, XNodeLight>>();
 		for (int i = 0; i < num_roots; ++i) {
-			roots[i] = generateXNode(getCurrentState(), roles.size(), i);
 			savedNodes.add(new HashMap<OpenBitSet, XNodeLight>());
-			Expand(roots[i], null, i);
+			roots[i] = generateXNode(getCurrentState(), roles.size(), i);
 			C_CONST[i] = HyperParameters.generateC(hyperparams.C, hyperparams.C/4);
+			Expand(roots[i], null, i);
 		}
 
 
@@ -677,7 +677,9 @@ public class Mozart extends XStateMachineGamer {
 
 		if (node == null) {
 			node = new XNodeLight(state, numRoles);
-			cache.put(state, node);
+			if (cache != null) {
+				cache.put(state, node);
+			}
 		}
 
 		return node;
