@@ -32,6 +32,7 @@ import com.google.common.collect.Lists;
 
 public class Mozart extends XStateMachineGamer {
 	public static final boolean FACTOR = true;
+	public static final boolean CACHING = true;
 
 	protected Player p;
 	private XStateMachine machine;
@@ -234,7 +235,7 @@ public class Mozart extends XStateMachineGamer {
 			rootSaved = savedNodes.get(savedNodes.size()-1);
 		} else {
 			rootSaved = new HashMap<OpenBitSet, XNodeLight>();
-			newRoot = generateXNode(getCurrentState(), roles.size(), num_roots);
+			newRoot = generateXNode(getCurrentState(), roles.size(), num_roots, false);
 			Expand(newRoot, null, num_roots);
 		}
 
@@ -243,7 +244,7 @@ public class Mozart extends XStateMachineGamer {
 		savedNodes = new ArrayList<Map<OpenBitSet, XNodeLight>>();
 		for (int i = 0; i < num_roots; ++i) {
 			savedNodes.add(new HashMap<OpenBitSet, XNodeLight>());
-			roots[i] = generateXNode(getCurrentState(), roles.size(), i);
+			roots[i] = generateXNode(getCurrentState(), roles.size(), i, CACHING);
 			C_CONST[i] = HyperParameters.generateC(hyperparams.C, hyperparams.C/4);
 			Expand(roots[i], null, i);
 		}
@@ -295,7 +296,7 @@ public class Mozart extends XStateMachineGamer {
 			}
 			if (!found_next) {
 				System.out.println("ERROR. Current State not in tree");
-				roots[i] = generateXNode(currentState, roles.size(), i);
+				roots[i] = generateXNode(currentState, roles.size(), i, CACHING);
 			}
 		}
 
@@ -317,7 +318,8 @@ public class Mozart extends XStateMachineGamer {
 				}
 			}
 			System.out.println("Restarting Root at index " + worstRoot);
-			roots[worstRoot] = generateXNode(currentState, roles.size(), worstRoot);
+			savedNodes.set(worstRoot, new HashMap<OpenBitSet, XNodeLight>());
+			roots[worstRoot] = generateXNode(currentState, roles.size(), worstRoot, CACHING);
 			C_CONST[worstRoot] = HyperParameters.generateC(C_CONST[bestRoot] - C_CONST[bestRoot]/16, C_CONST[bestRoot]/4);
 		}
 	}
@@ -630,7 +632,7 @@ public class Mozart extends XStateMachineGamer {
 				OpenBitSet state = background_machine.getNextState(n.state, jointMove);
 				XNodeLight child = n.getChildren(self_index).get(jointMove);
 				if(child == null) {
-					child = generateXNode(state, roles.size(), root_idx);
+					child = generateXNode(state, roles.size(), root_idx, CACHING);
 
 					child.utility[self_index] += differentialUtility(child, n) * heuristicWeights.get("differential");
 					child.visits += heuristicWeights.get("differential");
@@ -667,13 +669,16 @@ public class Mozart extends XStateMachineGamer {
 	}
 
 	//construct a new XNode object, while maintaining the graph mapping structure
-	protected XNodeLight generateXNode(OpenBitSet state, int numRoles, int rootIdx) {
+	protected XNodeLight generateXNode(OpenBitSet state, int numRoles, int rootIdx, boolean useCache) {
 		XNodeLight node = null;
-		Map<OpenBitSet, XNodeLight> cache = savedNodes.get(rootIdx);
-		if (cache != null) {
-			node = cache.get(state);
-		}
+		Map<OpenBitSet, XNodeLight> cache = null;
 
+		if (useCache) {
+			cache = savedNodes.get(rootIdx);
+			if (cache != null) {
+				node = cache.get(state);
+			}
+		}
 
 		if (node == null) {
 			node = new XNodeLight(state, numRoles);
