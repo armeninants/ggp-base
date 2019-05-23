@@ -668,6 +668,7 @@ public class Mozart extends XStateMachineGamer {
 		GdlPool.drainPool();
 		thread_pool.shutdownNow();
 		thread.stop();
+		savedNodes = new ArrayList<Map<OpenBitSet, XNodeLight>>();
 	}
 
 	//construct a new XNode object, while maintaining the graph mapping structure
