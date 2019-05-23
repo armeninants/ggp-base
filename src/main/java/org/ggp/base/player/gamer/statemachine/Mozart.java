@@ -669,15 +669,13 @@ public class Mozart extends XStateMachineGamer {
 	//construct a new XNode object, while maintaining the graph mapping structure
 	protected XNodeLight generateXNode(OpenBitSet state, int numRoles, int rootIdx) {
 		//XNodeLight node = null;
-		XNodeLight node = savedNodes.get(rootIdx).get(state);
-		/*if (rootIdx == num_roots) {
-			node = savedNode;
-		}*/
+		Map<OpenBitSet, XNodeLight> cache = savedNodes.get(rootIdx);
+		XNodeLight node = cache.get(state);
 
 
 		if (node == null) {
 			node = new XNodeLight(state, numRoles);
-			savedNodes.get(rootIdx).put(state, node);
+			cache.put(state, node);
 		}
 
 		return node;
