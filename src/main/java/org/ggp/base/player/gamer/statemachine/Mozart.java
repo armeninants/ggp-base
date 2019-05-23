@@ -42,7 +42,7 @@ public class Mozart extends XStateMachineGamer {
 	private long startedAt;
 	private int num_roots;
 	private volatile XNodeLight[] roots;
-	private volatile Map<OpenBitSet, XNodeLight>[] savedNodes;
+	private volatile List<Map<OpenBitSet, XNodeLight>> savedNodes;
 	private List<XNodeLight> path;
 	private CompletionService<Struct> executor;
 	private ThreadPoolExecutor thread_pool;
@@ -228,23 +228,30 @@ public class Mozart extends XStateMachineGamer {
 
 	protected void initializeRoots(Boolean first) throws MoveDefinitionException, TransitionDefinitionException {
 		XNodeLight newRoot;
+		Map<OpenBitSet, XNodeLight> rootSaved;
 		if (!first) {
 			newRoot = roots[roots.length-1];
+			rootSaved = savedNodes.get(savedNodes.size()-1);
 		} else {
+			rootSaved = new HashMap<OpenBitSet, XNodeLight>();
 			newRoot = generateXNode(getCurrentState(), roles.size(), num_roots);
 			Expand(newRoot, null, num_roots);
 		}
 
 		roots = new XNodeLight[num_roots+1];
 		C_CONST = new double[num_roots+1];
+		savedNodes = new ArrayList<Map<OpenBitSet, XNodeLight>>();
 		for (int i = 0; i < num_roots; ++i) {
 			roots[i] = generateXNode(getCurrentState(), roles.size(), i);
+			savedNodes.add(new HashMap<OpenBitSet, XNodeLight>());
 			Expand(roots[i], null, i);
 			C_CONST[i] = HyperParameters.generateC(hyperparams.C, hyperparams.C/4);
 		}
 
 
 		roots[roots.length-1] = newRoot;
+		savedNodes.add(rootSaved);
+
 		C_CONST[roots.length-1] = HyperParameters.generateC(hyperparams.C, hyperparams.C/4);
 		System.out.println("Initialized " + (num_roots+1) + " roots");
 	}
@@ -661,19 +668,16 @@ public class Mozart extends XStateMachineGamer {
 
 	//construct a new XNode object, while maintaining the graph mapping structure
 	protected XNodeLight generateXNode(OpenBitSet state, int numRoles, int rootIdx) {
-		XNodeLight node = null;
-		/*XNodeLight savedNode = savedNodes.get(state);
-		if (rootIdx == num_roots) {
+		//XNodeLight node = null;
+		XNodeLight node = savedNodes.get(rootIdx).get(state);
+		/*if (rootIdx == num_roots) {
 			node = savedNode;
 		}*/
 
 
 		if (node == null) {
 			node = new XNodeLight(state, numRoles);
-
-			/*if (rootIdx == num_roots) {
-				savedNodes.put(state, node);
-			}*/
+			savedNodes.get(rootIdx).put(state, node);
 		}
 
 		return node;
