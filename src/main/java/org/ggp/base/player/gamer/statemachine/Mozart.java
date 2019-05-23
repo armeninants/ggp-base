@@ -310,6 +310,7 @@ public class Mozart extends XStateMachineGamer {
 			double bestScore = -1.0;
 			for (int i=0; i < num_roots; ++i) {
 				double utility = roots[i].utility[self_index] / roots[i].updates;
+				System.out.println("root: " + i + " utility: " + utility);
 				if (utility < worstScore) {
 					worstRoot = i;
 					worstScore = utility;
