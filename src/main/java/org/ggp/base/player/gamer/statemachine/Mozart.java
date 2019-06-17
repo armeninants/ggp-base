@@ -428,6 +428,7 @@ public class Mozart extends XStateMachineGamer {
 			}
 			thread_stop = false;
 			mcts_thread_running = false;
+			System.out.println("Killing Thread");
 		}
 	}
 
