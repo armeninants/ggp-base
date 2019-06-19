@@ -299,6 +299,7 @@ public abstract class XStateMachineGamer extends Gamer
 		catch (Exception e)
 		{
 		    GamerLogger.logStackTrace("GamePlayer", e);
+			System.exit(0);
 			throw new MoveSelectionException(e);
 		}
 	}

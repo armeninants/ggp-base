@@ -15,7 +15,7 @@ public class HyperParameters implements Serializable {
 	}
 
 	public static double generateC(double mean, double std) {
-		return Math.max(1., r.nextGaussian()*std + mean);
+		return Math.max(1.414, r.nextGaussian()*std + mean);
 	}
 
 	@Override

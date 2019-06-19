@@ -162,6 +162,11 @@ public class Mozart extends XStateMachineGamer {
 			System.out.println(i + ": breadth: " + breadth.get(i) + " searched: " + nodes_searched.get(i));
 			size_est *= breadth.get(i) / nodes_searched.get(i);
 		}
+
+		//wait for mcts to finish current iteration
+		thread_stop = true;
+		while (mcts_thread_running) {}
+
 		if (num_rests > 0) {
 		double charge_est = depthCharges / (num_rests) * getMatch().getPlayClock();
 			//System.out.println("Nodes searched for data: " + nodes_searched);
@@ -179,10 +184,6 @@ public class Mozart extends XStateMachineGamer {
 		}
 		System.out.println("# roots: " + num_roots);
 
-		//wait for mcts to finish current iteration
-		thread_stop = true;
-		while (mcts_thread_running) {}
-
 		initializeRoots(false);
 
 		//reinitialize mcts thread
@@ -192,6 +193,10 @@ public class Mozart extends XStateMachineGamer {
 	}
 
 	protected void initialize(long timeout) throws MoveDefinitionException, TransitionDefinitionException, InterruptedException {
+
+		mcts_thread_running = false;
+		thread_stop = false;
+
 		heuristicWeights = new HashMap<String, Double>();
 		heuristicWeights.put("differential", 16.);
 
@@ -663,6 +668,7 @@ public class Mozart extends XStateMachineGamer {
 	protected void cleanup() {
 
 		thread_stop = true;
+		while (mcts_thread_running) {}
 		GdlPool.drainPool();
 		thread_pool.shutdownNow();
 		savedNodes = new ArrayList<Map<OpenBitSet, XNodeLight>>();
